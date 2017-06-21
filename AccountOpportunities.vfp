@@ -1,0 +1,201 @@
+<apex:page sidebar="false" controller="AccountOpportunitiesController" >
+    <!-- Jquery -->
+    <apex:includeScript value="//code.jquery.com/jquery-1.11.3.min.js"/>
+    <apex:stylesheet value="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css"/>
+    <!-- DataTable -->
+    <apex:includeScript value="//cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js"/>
+    <apex:stylesheet value="//cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css"/>
+    <!-- Search Highlight -->
+    <apex:includeScript value="//bartaz.github.io/sandbox.js/jquery.highlight.js"/>
+    <apex:includeScript value="//cdn.datatables.net/plug-ins/1.10.9/features/searchHighlight/dataTables.searchHighlight.min.js"/>
+    <apex:stylesheet value="//cdn.datatables.net/plug-ins/1.10.9/features/searchHighlight/dataTables.searchHighlight.css"/>
+    <!-- DataTable buttons -->
+    <apex:includeScript value="https://cdn.datatables.net/buttons/1.0.3/js/dataTables.buttons.min.js"/>
+    <apex:stylesheet value="https://cdn.datatables.net/buttons/1.0.3/css/buttons.dataTables.min.css"/>
+    
+    <style>
+        .filterMatches{
+        	background-color: #BFFF00;
+        }
+        .tertiaryPalette{
+        	color: #000 !important;
+        }
+        .dt-buttons{
+        	margin-left: 10px;
+        }
+        .dataTables_length{
+        	margin-bottom: 10px;
+        }
+        .dataTables_paginate {
+        	margin-top: 10px !important;
+        }
+        .dt-btn{
+        	padding: 5px 10px !important;
+        	text-decoration: none !important;
+        }
+        .btn.disabled {
+            text-decoration: none;
+            border: 0;
+            background: transparent;
+            cursor: text;
+        }
+        .btn.current{
+        	background: #cfeef8;
+        }
+        .dt-button.current{
+            border: 1px solid #426c9e;
+            text-shadow: 0 1px 0 #c4def1;
+            outline: none;
+            background-color: #79ace9;
+            background-image: -webkit-linear-gradient(top, #bddef4 0%, #79ace9 100%);
+        }
+        .row-checkbox-all{
+        	margin-top: 0 !important;
+        	margin-bottom: 0 !important;
+        }
+    </style>
+    <apex:form id="accountOpportunitiesForm">
+    	<apex:pageBlock title="Account: Opportunities">
+            
+            <apex:actionFunction action="{!updateOpportunities}" name="updateOpportunities" status="updateOpportunitiesStatus" reRender="accountOpportunitiesForm" >
+            	<apex:param name="selectedOpportunityIds" id="selectedOpportunityIds" value="" />
+            </apex:actionFunction>
+            
+            <apex:outputPanel id="hiddenElementsPanel">
+                <input type="hidden" id="selectedOpportunityIds" value="" />
+                <input type="hidden" id="selectedOpportunityIdsLength" value="0" />
+                <input type="hidden" id="opportunitiesListSize" value="{!opportunities.size}" />
+            </apex:outputPanel>
+            
+        	<apex:pageBlockSection title="Select Account" columns="1">
+            	<apex:pageBlockSectionItem >
+                    <apex:actionStatus id="accountActionStatus">
+                    	<apex:facet name="start">
+                            <apex:selectList size="1" disabled="true">
+                                <apex:selectOption itemLabel="Loading Opportunities..." itemValue="loading"></apex:selectOption>
+                            </apex:selectList>
+                        </apex:facet>
+                        <apex:facet name="stop">
+                            <apex:selectList value="{!selectedAccount}" size="1">
+                                <apex:selectOption itemLabel="-- All --" itemValue="all"></apex:selectOption>
+                                <apex:selectOptions value="{!accounts}"></apex:selectOptions>
+                                <apex:actionSupport event="onchange" status="accountActionStatus" reRender="opportunitiesBlockSection,hiddenElementsPanel" oncomplete="initDataTable();" />
+                            </apex:selectList>
+                        </apex:facet>
+                    </apex:actionStatus>
+                    <apex:actionStatus id="updateOpportunitiesStatus">
+                    	<apex:facet name="start">
+                            <img src="/img/loading.gif" />
+                        </apex:facet>
+                    </apex:actionStatus>
+                </apex:pageBlockSectionItem>
+            </apex:pageBlockSection>
+            
+            <apex:pageBlockSection title="Opportunities" id="opportunitiesBlockSection" columns="1">
+            	<apex:pageBlockTable value="{!opportunities}" var="opp" html-cid="opportunitiesTable">
+                    <apex:column style="width: 22px;">
+                        <apex:facet name="header">
+                            <apex:inputCheckbox rendered="false" id="selectAllOpportunity" styleClass="row-checkbox row-checkbox-all" />
+                            <input type="checkbox" id="selectAllOpportunity" class="row-checkbox-all" />
+                        </apex:facet>
+                        <apex:inputCheckbox selected="false" rendered="false" value="{!opp.Id}" styleClass="row-checkbox" />
+                        <input type="checkbox" value="{!opp.Id}" class="row-checkbox" />
+                    </apex:column>
+                	<apex:column value="{!opp.Name}" headerValue="Name" />
+                    <apex:column value="{!opp.Type}" headerValue="Type" />
+                    <apex:column value="{!opp.Description}" headerValue="Description" />
+                    <apex:column value="{!opp.LeadSource}" headerValue="Lead Source" />
+                    <apex:column value="{!opp.Account.Name}" headerValue="Account" />
+                    <apex:column value="{!opp.StageName}" headerValue="Stage" />
+                </apex:pageBlockTable>
+            </apex:pageBlockSection>
+        </apex:pageBlock>
+        
+        <apex:outputPanel layout="block">
+            <script type="text/javascript">
+            function initDataTable(){
+            	var opportunitiesTable = $('[cid$="opportunitiesTable"]').parent('table').eq(0);
+                var opportunitiesTableObj = $(opportunitiesTable).DataTable({
+                    scrollY: "300px",
+                    scrollCollapse:true,
+                    //enables results highlight
+                    searchHighlight: true,
+                    //sets record lengths to show in picklist
+                    aLengthMenu: [
+                        [10, 25, 50, 100, 200, -1],
+                        [10, 25, 50, 100, 200, "All"]
+                    ],
+                    "iDisplayLength": 10,
+                    //adds copy, print buttons...
+                    dom: 'lBfrtip', //l=length, B=buttons, f=filter(search), r=processing, t=the table, I=table summary, p=page controls
+                    buttons:[
+                    	{
+                            extend: 'custom',
+                            //className: 'btn dt-btn',
+                        	text: 'Update selected opportunities',
+                            action: function(e,dt,node,config){
+                                var strIds = $("input[id$='selectedOpportunityIds']").val();
+                                var arrIds = strIds.split(';');
+                                console.log('opportunityIds',arrIds);
+                                if(strIds && strIds.length > 0 && arrIds && arrIds.length > 0){
+                                	updateOpportunities(strIds);
+                                }else{
+                                	alert("Select atleast one record and try again.");
+                                }
+                            }
+                        }
+                    ],
+                });
+                
+                $(".row-checkbox-all").on('change',function(){
+                    var rows = opportunitiesTableObj.rows({ 'search': 'applied' }).nodes();
+                    $('input[type="checkbox"].row-checkbox', rows).prop('checked', this.checked);
+                    $('input[type="checkbox"].row-checkbox',rows).each(function(){
+                        $(this).trigger('change');
+                    });
+                    $("#selectedOpportunityIdsLength").val(rows.length);
+                });
+                
+                function triggerCheckboxRowEvent(){
+                    var checkedItems = parseInt($("#selectedOpportunityIdsLength").val());
+                    var opportunitiesListSize = parseInt($("#opportunitiesListSize").val());
+                    if($(this).is(":checked")){
+                        checkedItems++;
+                        if(checkedItems == opportunitiesListSize){
+                            $(".row-checkbox-all").prop("checked",true);
+                        }
+                    }else{
+                        checkedItems--;
+                        if(checkedItems < opportunitiesListSize){
+                            $(".row-checkbox-all").prop("checked",false);
+                        }
+                    }
+                    $("#selectedOpportunityIdsLength").val(checkedItems);
+                    
+                    var rows = opportunitiesTableObj.rows({ 'search': 'applied' }).nodes();
+                    var newSelectedOpportunityIdsString = '';
+                    $('input[type="checkbox"].row-checkbox:checked',rows).each(function(){
+                        newSelectedOpportunityIdsString += this.value + ';';
+                    });
+                    if(newSelectedOpportunityIdsString.trim().length > 0){
+                        newSelectedOpportunityIdsString = newSelectedOpportunityIdsString.substring(0,newSelectedOpportunityIdsString.trim().length);
+                    }
+                    $("input[id$='selectedOpportunityIds']").val(newSelectedOpportunityIdsString.trim());
+                }
+                $(".row-checkbox").on("change",triggerCheckboxRowEvent);
+                $("tbody[cid='opportunitiesTable']").on('change','input[type="checkbox"].row-checkbox',triggerCheckboxRowEvent);
+            }
+            $(document).ready(function(){
+                $.fn.dataTable.ext.classes.sPageButton = 'dt-button';//'btn dt-btn';
+                $.fn.dataTable.ext.buttons.custom = {
+                    text: 'Custom',
+                    action: function ( e, dt, node, config ) {
+                        dt.ajax.reload();
+                    }
+                };
+                initDataTable();
+            });
+            </script>
+        </apex:outputPanel>
+    </apex:form>
+</apex:page>
