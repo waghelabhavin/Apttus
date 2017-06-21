@@ -1,0 +1,74 @@
+public with sharing class AccountOpportunitiesController {
+    /* PROPERTIES */
+    public String selectedAccount{get;set;}    
+    
+    /* CONSTRUCTOR */
+    public AccountOpportunitiesController(){        
+        selectedAccount = 'all';
+    }
+     
+    /* GETTERS */
+    public List<SelectOption> getAccounts(){
+        List<SelectOption> accounts = new List<SelectOption>();
+        for(Account acc : [
+            SELECT Id,Name
+            FROM Account
+            ORDER BY Name
+        ]){
+            accounts.add(new SelectOption(acc.Id,acc.Name)); 
+        }
+        return accounts;
+    }
+    public List<Opportunity> getOpportunities(){
+        if(selectedAccount == 'all'){
+            return [
+                SELECT Id,Name,Description,LeadSource,Account.Name,Type,StageName
+                FROM Opportunity 
+                ORDER BY Account.Name,Name
+            ];
+        }
+        return [
+            SELECT Id,Name,Description,LeadSource,Account.Name,Type,StageName
+            FROM Opportunity
+            WHERE AccountId =: selectedAccount
+            ORDER BY Name
+        ];
+    }
+    
+    /* ACTION */
+    public void updateOpportunities(){
+        String strSelectedOpportunityIds = ApexPages.currentPage().getParameters().get('selectedOpportunityIds'); 
+        if(strSelectedOpportunityIds!=null && strSelectedOpportunityIds!=''){
+            Set<String> selectedOpportunityIds = new Set<String>(strSelectedOpportunityIds.split(';'));
+            Set<Id> selectedOpportunityAccountIds = new Set<Id>();
+            List<Opportunity> Opportunities = [
+                SELECT Id,Name,AccountId 
+                FROM Opportunity 
+                WHERE Id IN :selectedOpportunityIds
+            ]; 
+            if(Opportunities.size() > 0){
+                for(Opportunity opp : Opportunities){
+                    opp.StageName = 'Closed Won';
+                    selectedOpportunityAccountIds.add(opp.AccountId);
+                } 
+                UPSERT Opportunities;
+                
+                if(selectedOpportunityAccountIds.size() > 0){
+                    List<Account> Accounts = [
+                        SELECT Id,Name 
+                        FROM Account 
+                        WHERE Id IN :selectedOpportunityAccountIds
+                    ];
+                    if(Accounts.size() > 0){
+                        for(Account acc : Accounts){
+                            // SET ACCOUNT FIELD HERE
+                            acc.Status__c = 'Closed Won';
+                        }
+                        UPDATE Accounts; // Uncomment when account fields is set.
+                    }
+                }
+            }   
+        }
+        
+    }
+}
