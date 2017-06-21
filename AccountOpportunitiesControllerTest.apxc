@@ -1,0 +1,26 @@
+@isTest
+public class AccountOpportunitiesControllerTest {
+	static testMethod void testCase01() {
+        Account tAcc = new Account();
+        tAcc.name = 'test';
+        insert tAcc;
+        
+        Opportunity opp = new Opportunity();
+        opp.name = 'test';
+        opp.AccountId = tAcc.id;
+        opp.StageName = 'test';
+        opp.CloseDate = date.today(); 
+        insert opp;
+         
+        Test.setCurrentPageReference(new PageReference('Page.AccountOpportunities'));
+        AccountOpportunitiesController aoc = new AccountOpportunitiesController();
+        aoc.getAccounts();
+        aoc.getOpportunities();
+        aoc.selectedAccount = 'test';
+        aoc.getOpportunities();
+        
+        String strSelectedOpportunityIds =String.valueOf(opp.id); 
+		System.currentPageReference().getParameters().put('selectedOpportunityIds', strSelectedOpportunityIds);
+        aoc.updateOpportunities();
+    }
+}
